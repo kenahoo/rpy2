@@ -5,10 +5,9 @@ from datetime import datetime
 import pytest
 import pytz
 
-from rpy2 import rinterface
-from rpy2 import robjects
-from rpy2.robjects import vectors
-from rpy2.robjects import conversion
+from rpy2 import rinterface, robjects
+from rpy2.robjects import conversion, default_converter
+from rpy2.robjects.conversion import localconverter
 
 
 class MockNamespace(object):
@@ -20,21 +19,18 @@ has_pandas = False
 try:
     import pandas
     has_pandas = True
-except:
+except ImportError:
     pandas = MockNamespace()
 
 has_numpy = False
 try:
     import numpy
     has_numpy = True
-except:
+except ImportError:
     numpy = MockNamespace()
 
 if has_pandas:
     import rpy2.robjects.pandas2ri as rpyp
-
-from rpy2.robjects import default_converter
-from rpy2.robjects.conversion import localconverter
 
 
 _zones = (None, 'America/New_York', 'Australia/Sydney')

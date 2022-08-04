@@ -3,6 +3,7 @@ from collections import OrderedDict
 from datetime import datetime
 
 import pytest
+import pytz
 
 from rpy2 import rinterface
 from rpy2 import robjects
@@ -34,7 +35,11 @@ if has_pandas:
 
 from rpy2.robjects import default_converter
 from rpy2.robjects.conversion import localconverter
-    
+
+
+_zones = (None, 'America/New_York', 'Australia/Sydney')
+
+
 @pytest.mark.skipif(not has_pandas, reason='Package pandas is not installed.')
 class TestPandasConversions(object):
 
@@ -322,54 +327,70 @@ class TestPandasConversions(object):
             assert tuple(int(x) for x in rp_c) == (today.toordinal(), )
 
     def test_timeR2Pandas(self):
-        tzone = robjects.vectors.get_timezone()
-        dt = [datetime(1960, 5, 2),
-              datetime(1970, 6, 3), 
-              datetime(2012, 7, 1)]
-        dt = [x.replace(tzinfo=tzone) for x in dt]
-        # fix the time
-        ts = [x.timestamp() for x in dt]
-        # Create an R POSIXct vector.
-        r_time = robjects.baseenv['as.POSIXct'](
-            rinterface.FloatSexpVector(ts),
-            origin=rinterface.StrSexpVector(('1970-01-01',))
-        )
-
-        # Convert R POSIXct vector to pandas-compatible vector
-        with localconverter(default_converter + rpyp.converter) as cv:
-            py_time = robjects.conversion.converter_ctx.get().rpy2py(r_time)
-
-        # Check that the round trip did not introduce changes
-        for expected, obtained in zip(dt, py_time):
-            assert expected == obtained.to_pydatetime()
-
-        # Try with NA.
-        r_time[1] = rinterface.na_values.NA_Real
-        # Convert R POSIXct vector to pandas-compatible vector
-        with localconverter(default_converter + rpyp.converter) as cv:
-            py_time = robjects.conversion.converter_ctx.get().rpy2py(r_time)
-
-        assert py_time[1] is pandas.NaT
-
-    def test_posixct_in_dataframe_to_pandas(self):
-        tzone = robjects.vectors.get_timezone()
-        dt = [datetime(1960, 5, 2),
-              datetime(1970, 6, 3), 
-              datetime(2012, 7, 1)]
-        dt = [x.replace(tzinfo=tzone) for x in dt]
-        # fix the time
-        ts = [x.timestamp() for x in dt]
-        # Create an R data.frame with a posixct_vector.
-        r_dataf = robjects.vectors.DataFrame({
-            'mydate': robjects.baseenv['as.POSIXct'](
+        def func():
+            tzone = robjects.vectors.get_timezone()
+            dt = [datetime(1960, 5, 2),
+                  datetime(1970, 6, 3),
+                  datetime(2012, 7, 1)]
+            dt = [x.replace(tzinfo=tzone) for x in dt]
+            # fix the time
+            ts = [x.timestamp() for x in dt]
+            # Create an R POSIXct vector.
+            r_time = robjects.baseenv['as.POSIXct'](
                 rinterface.FloatSexpVector(ts),
                 origin=rinterface.StrSexpVector(('1970-01-01',))
-            )})
+            )
 
-        # Convert R POSIXct vector to pandas-compatible vector
-        with localconverter(default_converter + rpyp.converter):
-            py_dataf = robjects.conversion.converter_ctx.get().rpy2py(r_dataf)
-        assert pandas.core.dtypes.common.is_datetime64_any_dtype(py_dataf['mydate'])
+            # Convert R POSIXct vector to pandas-compatible vector
+            with localconverter(default_converter + rpyp.converter) as cv:
+                py_time = robjects.conversion.converter_ctx.get().rpy2py(r_time)
+
+            # Check that the round trip did not introduce changes
+            for expected, obtained in zip(dt, py_time):
+                assert expected == obtained.to_pydatetime()
+
+            # Try with NA.
+            r_time[1] = rinterface.na_values.NA_Real
+            # Convert R POSIXct vector to pandas-compatible vector
+            with localconverter(default_converter + rpyp.converter) as cv:
+                py_time = robjects.conversion.converter_ctx.get().rpy2py(r_time)
+
+            assert py_time[1] is pandas.NaT
+
+        self._do_with_timezones(func, skip_empty=True)
+
+    def test_posixct_in_dataframe_to_pandas(self):
+        def func():
+            tzone = robjects.vectors.get_timezone()
+            dt = [datetime(1960, 5, 2),
+                  datetime(1970, 6, 3),
+                  datetime(2012, 7, 1)]
+            dt = [x.replace(tzinfo=tzone) for x in dt]
+            # fix the time
+            ts = [x.timestamp() for x in dt]
+            # Create an R data.frame with a posixct_vector.
+            r_dataf = robjects.vectors.DataFrame({
+                'mydate': robjects.baseenv['as.POSIXct'](
+                    rinterface.FloatSexpVector(ts),
+                    origin=rinterface.StrSexpVector(('1970-01-01',))
+                )})
+
+            # Convert R POSIXct vector to pandas-compatible vector
+            with localconverter(default_converter + rpyp.converter):
+                py_dataf = robjects.conversion.converter_ctx.get().rpy2py(r_dataf)
+            assert pandas.core.dtypes.common.is_datetime64_any_dtype(py_dataf['mydate'])
+
+        self._do_with_timezones(func, skip_empty=True)
+
+    def _do_with_timezones(self, func, skip_empty=False):
+        try:
+            for zone in _zones:
+                if skip_empty and not zone:
+                    continue
+                robjects.vectors.default_timezone = pytz.timezone(zone) if zone else None
+                func()
+        finally:
+            robjects.vectors.default_timezone = None
 
     def test_repr(self):
         # this should go to testVector, with other tests for repr()

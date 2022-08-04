@@ -43,7 +43,8 @@ class TestPandasConversions(object):
         assert rpyp.py2rpy != robjects.conversion.get_conversion().py2rpy
         l = len(robjects.conversion.converter_ctx.get().py2rpy.registry)
         k = set(robjects.conversion.converter_ctx.get().py2rpy.registry.keys())
-        rpyp.activate()
+        with pytest.warns():
+            rpyp.activate()
         assert len(conversion.converter_ctx.get().py2rpy.registry) > l
         rpyp.deactivate()
         assert len(conversion.converter_ctx.get().py2rpy.registry) == l
@@ -54,9 +55,11 @@ class TestPandasConversions(object):
         assert rpyp.py2rpy != robjects.conversion.converter_ctx.get().py2rpy
         l = len(robjects.conversion.converter_ctx.get().py2rpy.registry)
         k = set(robjects.conversion.converter_ctx.get().py2rpy.registry.keys())
-        rpyp.activate()
+        with pytest.warns():
+            rpyp.activate()
         rpyp.deactivate()
-        rpyp.activate()
+        with pytest.warns():
+            rpyp.activate()
         assert len(conversion.converter_ctx.get().py2rpy.registry) > l
         rpyp.deactivate()
         assert len(conversion.converter_ctx.get().py2rpy.registry) == l
@@ -226,7 +229,7 @@ class TestPandasConversions(object):
     def test_series_issue264(self):
         Series = pandas.core.series.Series
         s = Series(('a', 'b', 'c', 'd', 'e'),
-                   index=pandas.Int64Index([0,1,2,3,4]))
+                   index=pandas.Index([0,1,2,3,4]))
         with localconverter(default_converter + rpyp.converter) as cv:
             rp_s = robjects.conversion.converter_ctx.get().py2rpy(s)
         # segfault before the fix

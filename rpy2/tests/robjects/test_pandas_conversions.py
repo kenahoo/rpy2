@@ -92,7 +92,8 @@ class TestPandasConversions(object):
             ('u', numpy.array([u'a', u'b', u'c'], dtype='U')),
             ('dates', [datetime(2012, 5, 2), 
                        datetime(2012, 6, 3), 
-                       datetime(2012, 7, 1)])
+                       datetime(2012, 7, 1)]),
+            ('timedelta', pandas.to_timedelta([0, 1, 2], 'hours'))
         )
         od = OrderedDict(l)
         # Pandas data frame

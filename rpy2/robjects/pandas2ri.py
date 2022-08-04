@@ -1,5 +1,6 @@
 """This module handles the conversion of data structures
 between R objects handled by rpy2 and pandas objects."""
+from pandas.core.dtypes.common import is_timedelta64_dtype
 
 import rpy2.robjects.conversion as conversion
 import rpy2.rinterface as rinterface
@@ -173,6 +174,11 @@ def py2rpy_pandasseries(obj):
         # TODO: can the POSIXct be created from the POSIXct constructor ?
         # (is '<M8[ns]' mapping to Python datetime.datetime ?)
         res = POSIXct(res)
+    elif is_timedelta64_dtype(obj):
+        res = FloatVector(obj.dt.total_seconds())
+        res.slots['units'] = 'secs'
+        res.rclass = ['difftime']
+
     elif obj.dtype.type is str:
         res = _PANDASTYPE2RPY2[str](obj)
     elif obj.dtype.name in integer_array_types:

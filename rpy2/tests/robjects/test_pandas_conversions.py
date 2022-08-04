@@ -89,18 +89,31 @@ class TestPandasConversions(object):
             ('dates', [datetime(2012, 5, 2), 
                        datetime(2012, 6, 3), 
                        datetime(2012, 7, 1)]),
+            ('dates2', pandas.to_datetime(['2012-05-02 00:00:00Z', '2012-06-03 00:00:00Z', '2012-07-01 00:00:00Z'])),
             ('timedelta', pandas.to_timedelta([0, 1, 2], 'hours'))
         )
         od = OrderedDict(l)
         # Pandas data frame
-        pd_df = pandas.core.frame.DataFrame(od)
+        pd_df = pandas.DataFrame(od)
         # Convert to R
         with localconverter(default_converter + rpyp.converter) as cv:
             rp_df = robjects.conversion.converter_ctx.get().py2rpy(pd_df)
         assert pd_df.shape[0] == rp_df.nrow
         assert pd_df.shape[1] == rp_df.ncol
+        assert tuple(rp_df.rx2('b')) == (True, False, True)
+        assert tuple(rp_df.rx2('i')) == (1, 2, 3)
+        assert tuple(rp_df.rx2('f')) == (1., 2., 3.)
         # assert tuple(rp_df.rx2('s')) == (b'b', b'c', b'd')
         assert tuple(rp_df.rx2('u')) == ('a', 'b', 'c')
+
+        assert tuple(robjects.r('class')(rp_df.rx2('dates'))), ("POSIXct", "POSIXt")
+        assert tuple(robjects.r('format')(rp_df.rx2('dates'))) == ('2012-05-02', '2012-06-03', '2012-07-01')
+
+        assert tuple(robjects.r('class')(rp_df.rx2('dates2'))), ("POSIXct", "POSIXt")
+        assert tuple(robjects.r('format')(rp_df.rx2('dates2'))) == ('2012-05-02', '2012-06-03', '2012-07-01')
+
+        assert tuple(robjects.r('class')(rp_df.rx2('timedelta'))) == ('difftime',)
+        assert tuple(robjects.r('format')(rp_df.rx2('timedelta'))) == ('   0 secs', '3600 secs', '7200 secs')
 
     def test_dataframe_columnnames(self):
         pd_df = pandas.DataFrame({'the one': [1, 2], 'the other': [3, 4]})

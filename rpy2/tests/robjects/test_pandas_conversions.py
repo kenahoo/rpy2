@@ -95,9 +95,12 @@ class TestPandasConversions(object):
         od = OrderedDict(l)
         # Pandas data frame
         pd_df = pandas.DataFrame(od)
-        # Convert to R
+
+        # Convert to R and back
         with localconverter(default_converter + rpyp.converter) as cv:
             rp_df = robjects.conversion.converter_ctx.get().py2rpy(pd_df)
+            py_df = robjects.conversion.converter_ctx.get().rpy2py(rp_df)
+
         assert pd_df.shape[0] == rp_df.nrow
         assert pd_df.shape[1] == rp_df.ncol
 
@@ -128,6 +131,19 @@ class TestPandasConversions(object):
 
         assert class_and_format(rp_df.rx2('timedelta')) == (('difftime',),
                                                             ('   0 secs', '3600 secs', '7200 secs'))
+
+        # Test the conversion back to python
+        assert isinstance(py_df, pandas.DataFrame)
+        assert pd_df.shape == py_df.shape
+
+        numpy.testing.assert_equal(py_df['b'], od['b'])
+        numpy.testing.assert_equal(py_df['i'], od['i'])
+        numpy.testing.assert_equal(py_df['f'], od['f'])
+        # numpy.testing.assert_equal(py_df['s'], od['s'])
+        numpy.testing.assert_equal(py_df['u'], od['u'])
+        # numpy.testing.assert_equal(py_df['dates'], od['dates'])
+        # numpy.testing.assert_equal(py_df['dates2'], od['dates2'])
+        # numpy.testing.assert_equal(py_df['timedelta'], od['timedelta'])
 
     def test_dataframe_columnnames(self):
         pd_df = pandas.DataFrame({'the one': [1, 2], 'the other': [3, 4]})

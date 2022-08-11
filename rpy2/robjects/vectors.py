@@ -14,7 +14,6 @@ import os
 import jinja2  # type: ignore
 import time
 import pytz
-import tzlocal
 from datetime import date, datetime, timedelta, timezone
 from time import struct_time, mktime
 import typing
@@ -850,7 +849,7 @@ def get_timezone():
     if default_timezone:
         timezone = default_timezone
     else:
-        timezone = tzlocal.get_localzone()
+        timezone = pytz.timezone(datetime.now().astimezone().tzname())
     return timezone
 
 

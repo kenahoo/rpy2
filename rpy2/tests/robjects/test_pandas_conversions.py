@@ -84,7 +84,7 @@ class TestPandasConversions(object):
             ('b', numpy.array([True, False, True], dtype=numpy.bool_)),
             ('i', numpy.array([1, 2, 3], dtype='i')),
             ('f', numpy.array([1, 2, 3], dtype='f')),
-            # ('s', numpy.array([b'b', b'c', b'd'], dtype='S1')),
+            ('s', numpy.array([b'b', b'c', b'd'], dtype='S1')),
             ('u', numpy.array([u'a', u'b', u'c'], dtype='U')),
             ('dates', [datetime(2012, 5, 2), 
                        datetime(2012, 6, 3), 
@@ -100,20 +100,34 @@ class TestPandasConversions(object):
             rp_df = robjects.conversion.converter_ctx.get().py2rpy(pd_df)
         assert pd_df.shape[0] == rp_df.nrow
         assert pd_df.shape[1] == rp_df.ncol
+
+        def class_and_format(x):
+            # Helper for checking class & value as seen inside R-space
+            return tuple(robjects.r('class')(x)), tuple(robjects.r('format')(x))
+
+        assert class_and_format(rp_df.rx2('b')) == (('logical',), (' TRUE', 'FALSE', ' TRUE'))
         assert tuple(rp_df.rx2('b')) == (True, False, True)
+
+        assert class_and_format(rp_df.rx2('i')) == (('integer',), ('1', '2', '3'))
         assert tuple(rp_df.rx2('i')) == (1, 2, 3)
+
+        assert class_and_format(rp_df.rx2('f')) == (('numeric',), ('1', '2', '3'))
         assert tuple(rp_df.rx2('f')) == (1., 2., 3.)
-        # assert tuple(rp_df.rx2('s')) == (b'b', b'c', b'd')
+
+        assert class_and_format(rp_df.rx2('s')) == (('raw',), ('62', '63', '64'))  # Hex values as strings
+        # assert tuple(rp_df.rx2('s')) == (b'b', b'c', b'd')  # rpy2py doesn't work for this yet
+
+        assert class_and_format(rp_df.rx2('u')) == (('character',), ('a', 'b', 'c'))
         assert tuple(rp_df.rx2('u')) == ('a', 'b', 'c')
 
-        assert tuple(robjects.r('class')(rp_df.rx2('dates'))), ("POSIXct", "POSIXt")
-        assert tuple(robjects.r('format')(rp_df.rx2('dates'))) == ('2012-05-02', '2012-06-03', '2012-07-01')
+        assert class_and_format(rp_df.rx2('dates')) == (("POSIXct", "POSIXt"),
+                                                        ('2012-05-02', '2012-06-03', '2012-07-01'))
 
-        assert tuple(robjects.r('class')(rp_df.rx2('dates2'))), ("POSIXct", "POSIXt")
-        assert tuple(robjects.r('format')(rp_df.rx2('dates2'))) == ('2012-05-02', '2012-06-03', '2012-07-01')
+        assert class_and_format(rp_df.rx2('dates2')) == (("POSIXct", "POSIXt"),
+                                                         ('2012-05-02', '2012-06-03', '2012-07-01'))
 
-        assert tuple(robjects.r('class')(rp_df.rx2('timedelta'))) == ('difftime',)
-        assert tuple(robjects.r('format')(rp_df.rx2('timedelta'))) == ('   0 secs', '3600 secs', '7200 secs')
+        assert class_and_format(rp_df.rx2('timedelta')) == (('difftime',),
+                                                            ('   0 secs', '3600 secs', '7200 secs'))
 
     def test_dataframe_columnnames(self):
         pd_df = pandas.DataFrame({'the one': [1, 2], 'the other': [3, 4]})

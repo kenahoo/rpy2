@@ -29,7 +29,8 @@ from rpy2.robjects.vectors import (BoolVector,
                                    FloatSexpVector,
                                    StrVector,
                                    IntVector,
-                                   POSIXct)
+                                   POSIXct,
+                                   DifftimeVector)
 
 # The pandas converter requires numpy.
 import rpy2.robjects.numpy2ri as numpy2ri
@@ -241,8 +242,26 @@ def ri2py_vector(obj):
 def rpy2py_floatvector(obj):
     if POSIXct.isrinstance(obj):
         return rpy2py(POSIXct(obj))
+    elif DifftimeVector.isrinstance(obj):
+        return rpy2py(DifftimeVector(obj))
     else:
         return numpy2ri.rpy2py(obj)
+
+
+@rpy2py.register(DifftimeVector)
+def rpy2py_difftimevector(obj):
+    units = {"secs": 's',
+             "mins": 'm',
+             "hours": 'h',
+             "days": 'D'}
+    obj_units = obj.slots['units'][0]
+    quantity = obj
+    if obj_units == 'weeks':
+        quantity *= 7
+        obj_units = 'days'
+    if obj_units not in units:
+        raise ValueError(f"Unknown 'units' value '{obj_units}'")
+    return pandas.to_timedelta(numpy.array(obj), unit=units[obj_units])
 
 
 @rpy2py.register(POSIXct)

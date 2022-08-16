@@ -853,6 +853,22 @@ def get_timezone():
     return timezone
 
 
+class DifftimeVector(FloatVector):
+    def __init__(self, seq):
+        if isinstance(seq, Sexp):
+            init_param = seq
+        else:
+            raise TypeError(
+                'Unable to create an R Difftime vector from objects of type %s' %
+                type(seq))
+        super().__init__(init_param)
+
+    @staticmethod
+    def isrinstance(obj) -> bool:
+        """Return whether an R object an instance of difftime."""
+        return 'difftime' in set(obj.rclass)
+
+
 class DateVector(FloatVector):
     """ Representation of dates as number of days since 1/1/1970.
 

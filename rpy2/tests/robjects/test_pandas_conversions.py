@@ -141,9 +141,13 @@ class TestPandasConversions(object):
         numpy.testing.assert_equal(py_df['f'], od['f'])
         # numpy.testing.assert_equal(py_df['s'], od['s'])
         numpy.testing.assert_equal(py_df['u'], od['u'])
-        # numpy.testing.assert_equal(py_df['dates'], od['dates'])
-        # numpy.testing.assert_equal(py_df['dates2'], od['dates2'])
-        # numpy.testing.assert_equal(py_df['timedelta'], od['timedelta'])
+
+        # 'dates' didn't have a timezone in the beginning, it shouldn't have one now
+        assert py_df['dates'].dt.tz is None
+        pandas.testing.assert_series_equal(py_df['dates'], pd_df['dates'], check_index=False)
+        assert py_df['dates2'].dt.tz == pytz.UTC
+        pandas.testing.assert_series_equal(py_df['dates2'], pd_df['dates2'], check_index=False)
+        pandas.testing.assert_series_equal(py_df['timedelta'], pd_df['timedelta'], check_index=False)
 
     def test_dataframe_columnnames(self):
         pd_df = pandas.DataFrame({'the one': [1, 2], 'the other': [3, 4]})
@@ -372,13 +376,14 @@ class TestPandasConversions(object):
             dt = [datetime(1960, 5, 2),
                   datetime(1970, 6, 3),
                   datetime(2012, 7, 1)]
-            dt = [x.replace(tzinfo=tzone) for x in dt]
+            dt = [tzone.localize(x) for x in dt]
             # fix the time
             ts = [x.timestamp() for x in dt]
             # Create an R POSIXct vector.
             r_time = robjects.baseenv['as.POSIXct'](
                 rinterface.FloatSexpVector(ts),
-                origin=rinterface.StrSexpVector(('1970-01-01',))
+                origin=rinterface.StrSexpVector(('1970-01-01',)),
+                tz=rinterface.StrSexpVector((tzone.zone,))
             )
 
             # Convert R POSIXct vector to pandas-compatible vector
@@ -405,7 +410,7 @@ class TestPandasConversions(object):
             dt = [datetime(1960, 5, 2),
                   datetime(1970, 6, 3),
                   datetime(2012, 7, 1)]
-            dt = [x.replace(tzinfo=tzone) for x in dt]
+            dt = [tzone.localize(x) for x in dt]
             # fix the time
             ts = [x.timestamp() for x in dt]
             # Create an R data.frame with a posixct_vector.

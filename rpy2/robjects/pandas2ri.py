@@ -266,8 +266,10 @@ def rpy2py_difftimevector(obj):
 
 @rpy2py.register(POSIXct)
 def rpy2py_posixct(obj):
-    return pandas.to_datetime(tuple(obj.iter_localized_datetime()),
-                              errors='coerce')
+    val = pandas.to_datetime(numpy.array(obj), unit='s')
+    if 'tzone' in obj.slots and obj.slots['tzone'][0] != '':
+        val = val.tz_localize('UTC').tz_convert(obj.slots['tzone'][0])
+    return val
 
 
 def _records_to_columns(obj):

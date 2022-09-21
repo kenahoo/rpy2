@@ -238,8 +238,10 @@ def py2rpy_pandasseries(obj):
 
     # "index" is equivalent to "names" in R
     if obj.ndim == 1:
-        res.do_slot_assign('names',
-                           StrVector(tuple(str(x) for x in obj.index)))
+        # If the pandas index is the "default index" of integers, use the "default index" on the R side too.
+        if not pandas.RangeIndex(obj.shape[0]).equals(obj.index):
+            res.do_slot_assign('names',
+                               StrVector(tuple(str(x) for x in obj.index)))
     else:
         res.do_slot_assign('dimnames',
                            SexpVector(conversion.converter_ctx

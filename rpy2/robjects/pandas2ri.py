@@ -162,6 +162,21 @@ def py2rpy_pandasseries(obj):
     elif obj.dtype.name == 'category':
         res = py2rpy_categoryseries(obj)
         res = FactorVector(res)
+
+    elif pandas.api.types.is_datetime64tz_dtype(obj):
+        # If it has a timezone, its epoch time is trustworthy and more efficient than going through ymdhms conversion
+
+        epoch = obj.astype(int)
+        is_nan = epoch == pandas.NaT.value
+        epoch /= 1e9
+        epoch[is_nan] = float('nan')
+
+        f = FloatVector(epoch)
+        f.rclass = ['POSIXct', 'POSIXt']
+        f.slots['tzone'] = obj.dt.tz.zone
+
+        res = POSIXct(f)
+
     elif is_datetime64_any_dtype(obj.dtype):
         # time series
         tzname = obj.dt.tz.zone if obj.dt.tz else ''
